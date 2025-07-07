@@ -45,12 +45,12 @@ docker run -it --rm crazynds/whatshttp:latest bash
 * /app - The aplication folder.
 
 ### Routes
-* [GET]```/client/:clientId/create?webHook={url}```: Create a client and saves the webHook url. You can recall this route to update the webHook without recreating the client. And if you use the same `clientId` you can recover old sessions.
+* [POST]```/client/:clientId/create?webHook={url}```: Create a client and saves the webHook url. You can recall this route to update the webHook without recreating the client. And if you use the same `clientId` you can recover old sessions.
 * [GET]```/client/:clientId```: Show the current status of this client. This route return a json like: `{clientId:{string}, ready:{bool}, qrCode:{string|null}, webHook: {string|null}}`. The meaning of the ready variable is if the client is connected and able to send or recive any messages.
 * [GET]```/client/:clientId/qrCode```: Route to render the qr code if it exists, or return 404.
 * [POST]```/client/:clientId/send```: Send messages to chats, should receive `chatId` and `message` in body.
 * [GET]```/client/:clientId/chat```: return list of chats of this client
-* [POST]```/client/:clientID/chat/messages```: return list of messages of chat, should receive `chatId` in body
+* [GET]```/client/:clientId/chat/:chatId/messages```: return list of messages of chat, should receive `chatId` in body
 
 ## Built With
 

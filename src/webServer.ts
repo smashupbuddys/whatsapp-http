@@ -1,160 +1,181 @@
-import express, { Request, Response } from 'express';
-import { createClient, getChatMessages, getChats, sendMessage, start_client, Message} from './whatsapp_api';
-import Client from './models/client';
-import QRCode from 'qrcode';
+import express, { Request, Response } from "express";
+import {
+  createClient,
+  getChatMessages,
+  getChats,
+  sendMessage,
+  start_client,
+  Message,
+} from "./whatsapp_api";
+import Client from "./models/client";
+import QRCode from "qrcode";
 
-export const port: number = parseInt(process.env.PORT ?? '3000');
-const server = express()
-server.use(express.json()); 
+export const port: number = parseInt(process.env.PORT ?? "3000");
+const server = express();
+server.use(express.json());
 
 export default server;
 
-function on_message(webHook: string|null) {
-    return async function (msg: Message) {
-        if (webHook === null) {
-            console.log(`${msg.from}: ${msg.body}`);
-            return false;
-        }
-        const infos = await msg.getInfo();
-        const m = {
-            'id': msg.id._serialized,
-            'author': msg.from,
-            'body': msg.body,
-            'type': msg.type,
-            'info': infos ? {
-                'deliverd': infos.delivery.length > 0,
-                'read': infos.read.length > 0,
-                'played': infos.played.length > 0
-
-            } : {},
-            'isForwarded': msg.isForwarded,
-            'timestamp': new Date(msg.timestamp * 1000),
-        };
-        try {
-            await fetch(
-                webHook,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(m)
-                });
-        }
-        catch {
-            console.error("Failed to notify webhook of message");
-            return false;
-        }
-        return true;
+function on_message(webHook: string | null) {
+  return async function (msg: Message) {
+    if (webHook === null) {
+      console.log(`${msg.from}: ${msg.body}`);
+      return false;
+    }
+    const infos = await msg.getInfo();
+    const m = {
+      id: msg.id._serialized,
+      author: msg.from,
+      body: msg.body,
+      type: msg.type,
+      info: infos
+        ? {
+            deliverd: infos.delivery.length > 0,
+            read: infos.read.length > 0,
+            played: infos.played.length > 0,
+          }
+        : {},
+      isForwarded: msg.isForwarded,
+      timestamp: new Date(msg.timestamp * 1000),
     };
+    try {
+      await fetch(webHook, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(m),
+      });
+    } catch {
+      console.error("Failed to notify webhook of message");
+      return false;
+    }
+    return true;
+  };
 }
 
-export async function createWebServer () {
+export async function createWebServer() {
+  server.post(
+    "/client/:clientId/create",
+    async (req: Request, res: Response) => {
+      const id = req.params.clientId;
+      let client = await Client.findByPk(id);
+      const webHook = req.body.webHook ?? req.query.webHook;
+      console.log(req.body);
+      if (!client) {
+        client = await createClient(
+          id,
+          on_message((webHook as string) || null)
+        );
+      } else if (!client.get("qrcode")) {
+        start_client(id, client);
+      }
 
-    server.get('/client/:clientId/create',async (req: Request, res: Response) => {
-        const id = req.params.clientId;
-        let client = await Client.findByPk(id);
+      if (webHook) {
+        client.set("webHook", webHook as string);
+        client.save();
+      }
 
-        if(!client){
-            client = await createClient(id, on_message(req.query.webHook as string || null));
-        } else if (!client.get("qrcode")) {
-            console.log("starting", id)
-            start_client(id, client); 
-        }
+      res.setHeader("Content-Type", "application/json");
+      res.end(
+        JSON.stringify({
+          clientId: id,
+        })
+      );
+    }
+  );
 
-        if(req.query.webHook){
-            client.set('webHook', req.query.webHook as string);
-        }
+  // Create a clientId
+  server.get("/client/:clientId", async (req: Request, res: Response) => {
+    const id = req.params.clientId;
+    const client = await Client.findByPk(id);
 
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({
-            clientId: id
-        }));
-    });
+    if (!client) return res.status(404).send("Not found");
 
+    res.setHeader("Content-Type", "application/json");
+    res.end(
+      JSON.stringify({
+        clientId: client.get("clientId"),
+        ready: client.get("ready"),
+        qr: client.get("qrCode") ?? null,
+        webHook: client.get("webHook") ?? null,
+      })
+    );
+  });
 
-    // Create a clientId
-    server.get('/client/:clientId',async (req: Request, res: Response) => {
-        const id = req.params.clientId;
-        const client = await Client.findByPk(id);
+  // render the qr code
+  server.get(
+    "/client/:clientId/qrCode",
+    async (req: Request, res: Response) => {
+      const id = req.params.clientId;
+      let client = await Client.findByPk(id);
 
-        if(!client)return res.status(404).send('Not found');
+      if (!client) return res.status(404).send("Not found");
+      // else if (!client.get("qrcode")) {
+      //     start_client(id, client);
+      //     return;
+      // }
+      if (!client.get("qrCode"))
+        return res.status(404).send("Qrcode not found");
 
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({
-            clientId: client.get('clientId'),
-            ready: client.get('ready'),
-            qr: client.get('qrCode') ?? null,
-            webHook: client.get('webHook') ?? null
-        }));
-    });
+      const qrCode = client.get("qrCode") as string;
 
-    // render the qr code
-    server.get('/client/:clientId/qrCode',async (req: Request, res: Response) => {
-        const id = req.params.clientId;
-        let client = await Client.findByPk(id);
+      const qrCodeImage = await QRCode.toDataURL(qrCode);
+      res.send(`<img src="${qrCodeImage}" alt="QR Code"/>`);
+    }
+  );
 
-        if(!client)return res.status(404).send('Not found');
-        // else if (!client.get("qrcode")) {
-        //     start_client(id, client);
-        //     return;
-        // }
-        if(!client.get("qrCode"))return res.status(404).send('Qrcode not found');
+  // get chats
+  server.get("/client/:clientId/chat", async (req: Request, res: Response) => {
+    const id = req.params.clientId;
+    const client = await Client.findByPk(id);
 
-        const qrCode = client.get('qrCode') as string;
+    if (!client || !client.get("ready"))
+      return res.status(404).send("Not found");
 
-        const qrCodeImage = await QRCode.toDataURL(qrCode);
-        res.send(`<img src="${qrCodeImage}" alt="QR Code"/>`);
-    });
+    const chats = await getChats(client);
 
-    // get chats
-    server.get('/client/:clientId/chat',async (req: Request, res: Response) => {
-        const id = req.params.clientId;
-        const client = await Client.findByPk(id);
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(chats));
+  });
 
-        if(!client || !client.get('ready'))return res.status(404).send('Not found');
+  // send messages to clients
+  server.post("/client/:clientId/send", async (req: Request, res: Response) => {
+    const id = req.params.clientId;
+    const client = await Client.findByPk(id);
 
-        const chats = await getChats(client);
+    if (!client) return res.status(404).send("Not found");
 
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(chats));
-    })
+    const { chatId, message } = req.body;
 
-    // send messages to clients
-    server.post('/client/:clientId/send',async (req: Request, res: Response) => {
-        const id = req.params.clientId;
-        const client = await Client.findByPk(id);
+    const result = await sendMessage(client, chatId, message);
 
-        if(!client)return res.status(404).send('Not found');
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(result));
+  });
 
-        const {chatId, message} = req.body;
+  // get chat messages
+  server.get(
+    "/client/:clientId/chat/:chatId/messages",
+    async (req: Request, res: Response) => {
+      const id = req.params.clientId;
+      const client = await Client.findByPk(id);
 
-        const result = await sendMessage(client, chatId, message);
+      if (!client || !client.get("ready"))
+        return res.status(404).send("Not found");
 
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(result));
-    })
+      const chatId = req.params.chatId;
 
-    // get chat messages
-    server.post('/client/:clientId/chat/messages',async (req: Request, res: Response) => {
-        const id = req.params.clientId;
-        const client = await Client.findByPk(id);
+      const messages = await getChatMessages(client, chatId, 200);
 
-        if(!client || !client.get('ready'))return res.status(404).send('Not found');
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(messages));
+    }
+  );
 
-        const chatId = req.body.chatId;
-
-        const messages = await getChatMessages(client,chatId,200);
-
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(messages));
-    })
-
-
-    server.listen(port, () => {
-        // Ready
-        console.log(`!!WebServer Started!!`);
-    });
-    return server
+  server.listen(port, () => {
+    // Ready
+    console.log(`!!WebServer Started!!`);
+  });
+  return server;
 }
-
