@@ -21,17 +21,17 @@ To run this container, you will need to have Docker installed.
 You can run the container with the following parameters:
 
 ```shell
-docker run arturcsegat/whatshttp:latest [parameters]
+docker run crazynds/whatshttp:latest [parameters]
 ```
 
 Basic usage example:
 ```shell
-docker run -d --name whatshttp -p 3000:3000 arturcsegat/whatshttp:latest
+docker run -d --name whatshttp -p 3000:3000 crazynds/whatshttp:latest
 ```
 
 To start a shell inside the container:
 ```shell
-docker run -it --rm arturcsegat/whatshttp:latest bash
+docker run -it --rm crazynds/whatshttp:latest bash
 ```
 
 #### Environment Variables
