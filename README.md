@@ -21,22 +21,22 @@ To run this container, you will need to have Docker installed.
 You can run the container with the following parameters:
 
 ```shell
-docker run crazynds/whatsapp-api:latest [parameters]
+docker run arturcsegat/whatshttp:latest [parameters]
 ```
 
 Basic usage example:
 ```shell
-docker run -d --name whatsapp-api -p 3000:3000 crazynds/whatsapp-api:latest
+docker run -d --name whatshttp -p 3000:3000 arturcsegat/whatshttp:latest
 ```
 
 To start a shell inside the container:
 ```shell
-docker run -it --rm crazynds/whatsapp-api:latest bash
-
+docker run -it --rm arturcsegat/whatshttp:latest bash
 ```
 
 #### Environment Variables
 * PORT - Port the server will run inside the docker. Default: 3000
+* DB_PATH - Path to sqlite database, if not defined will store clients in memory
 
 #### Volumes
 * /app/data - Directory where session are stored.
@@ -44,16 +44,13 @@ docker run -it --rm crazynds/whatsapp-api:latest bash
 #### Useful File Locations
 * /app - The aplication folder.
 
-
-## Dev
-
 ### Routes
-
-
 * [GET]```/client/:clientId/create?webHook={url}```: Create a client and saves the webHook url. You can recall this route to update the webHook without recreating the client. And if you use the same `clientId` you can recover old sessions.
 * [GET]```/client/:clientId```: Show the current status of this client. This route return a json like: `{clientId:{string}, ready:{bool}, qrCode:{string|null}, webHook: {string|null}}`. The meaning of the ready variable is if the client is connected and able to send or recive any messages.
 * [GET]```/client/:clientId/qrCode```: Route to render the qr code if it exists, or return 404.
-* [POST]```/client/:clientId/send```: Send messages to chats.
+* [POST]```/client/:clientId/send```: Send messages to chats, should receive `chatId` and `message` in body.
+* [GET]```/client/:clientId/chat```: return list of chats of this client
+* [POST]```/client/:clientID/chat/messages```: return list of messages of chat, should receive `chatId` in body
 
 ## Built With
 
@@ -63,14 +60,14 @@ docker run -it --rm crazynds/whatsapp-api:latest bash
 
 ## Find Us
 
-* [GitHub](https://github.com/crazynds/Whatsapp-Api)
-* [Docker Hub](https://hub.docker.com/r/crazynds/whatsapp-api)
+* [GitHub](https://github.com/ArturCSegat/whatshttp)
+* [Docker Hub](https://hub.docker.com/r/arturcsegat/whatshttp)
 
 
 ## Authors
+* [ArturCSegat](https://github.com/ArturCSegat)
 * [Crazynds](https://github.com/crazynds)
 
-See also the list of contributors who participated in this project.
 
 ## License
 

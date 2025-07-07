@@ -1,4 +1,4 @@
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import WAWebJS, { Client, LocalAuth } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 
 import ClientModel from '../models/client'
@@ -9,28 +9,30 @@ export const clients = {
     [key: string]: Client
 }
 
+export type Message = WAWebJS.Message;
+
 
 export async function sendMessage(model: Model<any,any>, chatId: string, message: string){
     const clientId = model.get('clientId') as string | null;
     const client = clients[ clientId ?? ''];
     if(!client) return false;
 
-    const chat = await client.getChatById(chatId);
+    const msg = await client.sendMessage(chatId, message);
+    // const infos = await msg.getInfo();
 
-    if(!chat) return false;
+    console.log(msg);
+    // console.log(infos);
 
-    const msg = await chat.sendMessage(message,{});
-    const infos = await msg.getInfo();
     return {
-        'id': msg.id._serialized,
-        'author': msg.fromMe ? null : (chat.isGroup ? msg.author : chat.name),
+        'id': msg.id,
+        'author': null,
         'body': msg.body,
         'type': msg.type,
-        'info': infos ? {
-            'deliverd': infos.delivery.length > 0,
-            'read': infos.read.length > 0,
-            'played': infos.played.length > 0
-        } : {},
+        // 'info': infos ? {
+        //     'deliverd': infos.delivery.length > 0,
+        //     'read': infos.read.length > 0,
+        //     'played': infos.played.length > 0
+        // } : {},
         'isForwarded': msg.isForwarded,
         'timestamp': new Date(msg.timestamp * 1000),
     }
@@ -58,14 +60,17 @@ export async function getChatMessages(model: Model<any,any>, chatId: string, cou
     const client = clients[ clientId ?? ''];
     if(!client) return false;
     const chat = await client.getChatById(chatId);
+
     if(!chat) return false;
-    return (await chat.fetchMessages({
-        limit: count
-    })).forEach(async msg => {
+    const msgs = await chat.fetchMessages({limit: count})
+    console.log(msgs);
+
+    const m = [];
+    for (const msg of msgs) {
         const infos = await msg.getInfo();
-        return {
+        m.push( {
             'id': msg.id._serialized,
-            'author': msg.fromMe ? null : (chat.isGroup ? msg.author : chat.name),
+            'author': msg.from,
             'body': msg.body,
             'type': msg.type,
             'info': infos ? {
@@ -76,15 +81,12 @@ export async function getChatMessages(model: Model<any,any>, chatId: string, cou
             } : {},
             'isForwarded': msg.isForwarded,
             'timestamp': new Date(msg.timestamp * 1000),
-        }
-    });
+        })
+    }
+    return m;
 }
 
-
-export async function createClient(clientId: string) {
-    const clientModel = await ClientModel.create({
-        clientId: clientId
-    })
+export function start_client(clientId: string, clientModel: Model) {
     const client = new Client({
         authStrategy: new LocalAuth({
             dataPath: './data/',
@@ -141,6 +143,53 @@ export async function createClient(clientId: string) {
                 break;
         }
 
+    });
+    
+    client.initialize();
+    clients[clientId] = client
+}
+
+
+export async function createClient(clientId: string, message_handler: (msg: WAWebJS.Message) => Promise<boolean>) {
+    const clientModel = await ClientModel.create({
+        clientId: clientId
+    })
+    const client = new Client({
+        authStrategy: new LocalAuth({
+            dataPath: './data/',
+            clientId: clientId
+        }),
+        puppeteer: {
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        }
+    });
+
+    client.on('remote_session_saved', () => {
+        clientModel.set({
+            ready: true
+        })
+        clientModel.save();
+    });
+    
+    client.on('qr', (qr) => {
+        clientModel.set({
+            qrCode: qr
+        })
+        clientModel.save();
+    });
+    
+    client.on('ready', () => {
+        clientModel.set({
+            ready: true
+        })
+        clientModel.save();
+    });
+    
+    client.on('message', async (msg) => {
+        const a = await message_handler(msg);
+        if (!a) {
+            console.error("message_handler failed");
+        }
     });
     
     client.initialize();
