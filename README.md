@@ -107,13 +107,87 @@ docker run -d -p 3000:3000 whatshttp
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions from the community! Here's how you can contribute to the project:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Prerequisites
+- A GitHub account
+- Git installed on your system
+- Node.js and npm/yarn (for development)
+
+### Fork the Repository
+1. Visit the [GitHub repository](https://github.com/crazynds/whatshttp)
+2. Click the "Fork" button in the top-right corner
+3. Clone your forked repository to your local machine:
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/whatshttp.git
+   cd whatshttp
+   ```
+4. Add the upstream repository as a remote:
+   ```bash
+   git remote add upstream https://github.com/crazynds/whatshttp.git
+   ```
+
+### Create a Branch
+1. Make sure your fork is up to date:
+   ```bash
+   git fetch upstream
+   git checkout main
+   git merge upstream/main
+   ```
+2. Create a new branch for your feature or bugfix:
+   ```bash
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b fix/issue-number-description
+   ```
+
+### Make Your Changes
+1. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn
+   ```
+2. Make your changes following the project's code style
+3. Add tests if applicable
+4. Run tests to make sure everything works:
+   ```bash
+   npm test
+   # or
+   yarn test
+   ```
+
+### Commit and Push
+1. Stage your changes:
+   ```bash
+   git add .
+   ```
+2. Commit with a descriptive message:
+   ```bash
+   git commit -m "feat: add new feature"
+   # or
+   git commit -m "fix: resolve issue with message sending"
+   ```
+3. Push to your forked repository:
+   ```bash
+   git push origin your-branch-name
+   ```
+
+### Create a Pull Request
+1. Go to your forked repository on GitHub
+2. Click on "Compare & pull request"
+3. Fill in the PR template with details about your changes
+4. Submit the pull request
+
+### After Submitting
+- Wait for the CI/CD pipeline to run
+- Address any feedback or requested changes
+- Once approved, your changes will be merged into the main branch
+
+### Code Review Process
+- All pull requests will be reviewed by the maintainers
+- We use "Squash and Merge" to keep the commit history clean
+- Your contribution will be credited in the project's changelog
 
 ## 📄 License
 
