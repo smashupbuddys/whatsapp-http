@@ -1,75 +1,138 @@
-# WhatsApp API Docker Container
+# WhatsApp HTTP API
 
-This Docker container runs an API for WhatsApp, allowing for easy and secure integration with WhatsApp for message automation and other services.
+A Docker container that provides a RESTful API for WhatsApp Web, enabling easy integration with WhatsApp for messaging automation and other services.
 
-## Getting Started
+![WhatsApp API](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)
 
-These instructions cover the necessary information to use the Docker container.
+## ✨ Features
+
+- 💬 Send and receive WhatsApp messages
+- 📁 Media support (images, documents, audio, video)
+- 🔄 Multiple client sessions support
+- 📊 Webhook notifications for incoming messages
+- 📝 Fully documented REST API with Swagger
+- 🐳 Easy Docker deployment
+- 🔒 Session persistence
+- 🚀 Built with TypeScript for type safety
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-To run this container, you will need to have Docker installed.
+- [Docker](https://docs.docker.com/get-docker/) installed on your system
+- Node.js 16+ (for development)
 
-* [Windows](https://docs.docker.com/windows/started)
-* [OS X](https://docs.docker.com/mac/started/)
-* [Linux](https://docs.docker.com/linux/started/)
+### Quick Start
 
-### Usage
+1. **Run with Docker** (recommended):
+   ```bash
+   docker run -d \
+     --name whatshttp \
+     -p 3000:3000 \
+     -v whatsapp-sessions:/app/data \
+     crazynds/whatshttp:latest
+   ```
 
-#### Container Parameters
+2. **Access the API documentation**:
+   Open your browser and navigate to `http://localhost:3000/docs`
 
-You can run the container with the following parameters:
+## 📚 Documentation
 
-```shell
-docker run crazynds/whatshttp:latest [parameters]
+### API Reference
+
+Detailed API documentation is available at `/docs` when the server is running. The documentation includes:
+
+- Available endpoints
+- Request/response schemas
+- Example requests
+- Authentication requirements
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Port the server will listen on |
+| `DB_PATH` | `:memory:` | Path to SQLite database file (use `:memory:` for in-memory) |
+| `LOG_LEVEL` | `info` | Logging level (error, warn, info, debug) |
+
+### Volumes
+
+| Path | Description |
+|------|-------------|
+| `/app/data` | Directory where WhatsApp sessions are stored |
+
+## 🔧 Development
+
+### Prerequisites
+
+- Node.js 16+
+- npm or yarn
+- Docker (for containerized development)
+
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/crazynds/whatshttp.git
+   cd whatshttp
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+4. The API will be available at `http://localhost:3000`
+
+### Building for Production
+
+```bash
+# Build the Docker image
+docker build -t whatshttp .
+
+# Run the container
+docker run -d -p 3000:3000 whatshttp
 ```
 
-Basic usage example:
-```shell
-docker run -d --name whatshttp -p 3000:3000 crazynds/whatshttp:latest
-```
+## 🤝 Contributing
 
-To start a shell inside the container:
-```shell
-docker run -it --rm crazynds/whatshttp:latest bash
-```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-#### Environment Variables
-* PORT - Port the server will run inside the docker. Default: 3000
-* DB_PATH - Path to sqlite database, if not defined will store clients in memory
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-#### Volumes
-* /app/data - Directory where session are stored.
+## 📄 License
 
-#### Useful File Locations
-* /app - The aplication folder.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Routes
-* [POST]```/client/:clientId/create?webHook={url}```: Create a client and saves the webHook url. You can recall this route to update the webHook without recreating the client. And if you use the same `clientId` you can recover old sessions.
-* [GET]```/client/:clientId```: Show the current status of this client. This route return a json like: `{clientId:{string}, ready:{bool}, qrCode:{string|null}, webHook: {string|null}}`. The meaning of the ready variable is if the client is connected and able to send or recive any messages.
-* [GET]```/client/:clientId/qrCode```: Route to render the qr code if it exists, or return 404.
-* [POST]```/client/:clientId/send```: Send messages to chats, should receive `chatId` and `message` in body.
-* [GET]```/client/:clientId/chat```: return list of chats of this client
-* [GET]```/client/:clientId/chat/:chatId/messages```: return list of messages of chat, should receive `chatId` in body
+## 🙏 Acknowledgments
 
-## Built With
+- [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) - WhatsApp Web API
+- [Express](https://expressjs.com/) - Web framework for Node.js
+- [TypeScript](https://www.typescriptlang.org/) - TypeScript is JavaScript with syntax for types
 
-* Node.js v22.4.0
-* Express v4.17.0
-* whatsapp-web.js v1.25.0
+## 📬 Contact
 
-## Find Us
+- [Crazynds](https://github.com/crazynds)
+- [ArturCSegat](https://github.com/ArturCSegat)
 
-* [GitHub](https://github.com/ArturCSegat/whatshttp)
-* [Docker Hub](https://hub.docker.com/r/arturcsegat/whatshttp)
+## 🔗 Links
 
-
-## Authors
-* [ArturCSegat](https://github.com/ArturCSegat)
-* [Crazynds](https://github.com/crazynds)
-
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE.md file for details.
+- [GitHub Repository](https://github.com/crazynds/whatshttp)
+- [Docker Hub](https://hub.docker.com/r/crazynds/whatshttp)
+- [Report Bug](https://github.com/crazynds/whatshttp/issues)
 
