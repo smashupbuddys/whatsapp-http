@@ -1,0 +1,236 @@
+import express, { Request, Response } from "express";
+import Client from "../models/client";
+import { findClient, getChat, getChats, sendMessage } from "../whatsapp_api";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "uploads");
+const upload = multer({ dest: uploadDir });
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Helper to normalize chatId suffix based on param or query
+function normalizeChatId(chatId: string, isGroupQuery?: string | undefined) {
+  if (chatId.endsWith("@c.us") || chatId.endsWith("@g.us")) {
+    return chatId;
+  }
+  if (isGroupQuery === "true") {
+    return chatId + "@g.us";
+  }
+  return chatId + "@c.us";
+}
+
+const router = express.Router();
+
+/**
+ * @swagger
+ * /api/message/chat:
+ *   get:
+ *     tags: [Messages]
+ *     summary: Get all chats for a client
+ *     parameters:
+ *       - in: query
+ *         name: clientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The client ID
+ *     responses:
+ *       200:
+ *         description: List of chats retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Chat'
+ *       400:
+ *         description: Client not ready
+ *       404:
+ *         description: Client not found
+ */
+router.get("/chat", async (req: Request, res: Response) => {
+  const id = req.query.clientId;
+  const client = await findClient(id);
+
+  if (!client) return res.status(404).send("Client not found");
+  if (!client.get("ready")) return res.status(400).send("Client not ready");
+
+  try {
+    const chats = await getChats(client);
+    res.json(chats);
+  } catch (err) {
+    res.status(500).json({ error: `error getting chats: ${err}` });
+  }
+});
+
+/**
+ * @swagger
+ * /api/message/chat/{chatId}:
+ *   get:
+ *     tags: [Messages]
+ *     summary: Get a specific chat
+ *     parameters:
+ *       - in: query
+ *         name: clientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The client ID
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The chat ID (without @c.us or @g.us suffix)
+ *       - in: query
+ *         name: group
+ *         schema:
+ *           type: string
+ *         description: Set to 'true' if this is a group chat
+ *     responses:
+ *       200:
+ *         description: Chat details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Chat'
+ *       400:
+ *         description: Client not ready
+ *       404:
+ *         description: Client or chat not found
+ */
+router.get("/chat/:chatId", async (req: Request, res: Response) => {
+  const client = await findClient(req.query.clientId);
+  if (!client) return res.status(404).send("Client not found");
+  if (!client.get("ready")) return res.status(400).send("Client not ready");
+
+  const chatId = normalizeChatId(
+    req.params.chatId,
+    req.query.group as string | undefined
+  );
+
+  try {
+    const chat = await getChat(client, chatId);
+    res.json(chat);
+  } catch (err) {
+    res.status(500).json({ error: `error getting chat: ${err}` });
+  }
+});
+
+/**
+ * @swagger
+ * /api/message/chat/{chatId}:
+ *   post:
+ *     tags: [Messages]
+ *     summary: Send a message to a chat
+ *     description: |
+ *       Send a text message or media to a chat. For media messages, use multipart/form-data.
+ *       The chatId can be provided without @c.us or @g.us suffix.
+ *     parameters:
+ *       - in: query
+ *         name: clientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The client ID
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The chat ID (without @c.us or @g.us suffix)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: The text message to send
+ *               media:
+ *                 type: string
+ *                 format: binary
+ *                 description: Media file to send (image, video, document, etc.)
+ *               response_to_id:
+ *                 type: string
+ *                 description: ID of the message to reply to (optional)
+ *     responses:
+ *       200:
+ *         description: Message sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Message'
+ *       400:
+ *         description: Client not ready or invalid request
+ *       404:
+ *         description: Client or chat not found
+ */
+router.post(
+  "/chat/:chatId",
+  upload.single("media"),
+  async (req: Request, res: Response) => {
+    const client = await findClient(req.query.clientId);
+    if (!client) return res.status(404).send("Client not found");
+    if (!client.get("ready")) return res.status(400).send("Client not ready");
+
+    const chatId = normalizeChatId(
+      req.params.chatId,
+      req.query.group as string | undefined
+    );
+    const { message, response_to_id } = req.body;
+
+    let finalMediaPath: string | null = null;
+
+    try {
+      let isVoice: boolean = false;
+      if (req.file) {
+        isVoice = req.query.voice === "true";
+
+        // Ensure ./media exists
+        const mediaDir = path.join(process.cwd(), "media");
+        await fs.promises.mkdir(mediaDir, { recursive: true });
+
+        // Build final file path in ./media
+        const filename = `${Date.now()}_${req.file.originalname}`;
+        finalMediaPath = path.join(mediaDir, filename);
+
+        // Move file to ./media
+        await fs.promises.rename(req.file.path, finalMediaPath);
+      }
+
+      res.status(200).send("OK");
+
+      sendMessage(
+        client,
+        chatId,
+        message ?? null,
+        finalMediaPath,
+        response_to_id ?? null,
+        isVoice
+      )
+        .catch((err) => {})
+        .finally(async () => {
+          if (finalMediaPath) {
+            try {
+              await fs.promises.unlink(finalMediaPath);
+            } catch (unlinkErr) {
+              console.error(
+                `Failed to delete media file: ${finalMediaPath}`,
+                unlinkErr
+              );
+            }
+          }
+        });
+    } catch (err) {
+      res.status(500).json({ error: `error sending message: ${err}` });
+    }
+  }
+);
+
+export default router;
