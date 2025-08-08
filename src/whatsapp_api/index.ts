@@ -1,13 +1,10 @@
-import WAWebJS, { Client, LocalAuth, MessageMedia } from "whatsapp-web.js";
-
-import type { Message, Chat, Contact } from "whatsapp-web.js";
+import { Client, MessageMedia } from "whatsapp-web.js";
 
 import ClientModel from "../models/client";
-import { FindOrCreateOptions, Model } from "@sequelize/core";
+import { Model } from "@sequelize/core";
 import fs from "fs/promises";
 import path from "path";
-import { JsonChat, JsonClient, JsonContact, JsonMsg } from "./resources";
-import { on_message } from "./webhook";
+import { JsonChat, JsonContact, JsonMsg } from "./resources";
 
 export const clients = {} as {
   [key: string]: Client;
@@ -246,108 +243,10 @@ export async function getContact(model: Model<any, any>, chatId: string) {
   return await JsonContact(contact);
 }
 
-export async function findClient(
-  clientId: any = null,
-  can_create: boolean = false
-) {
-  if (!clientId) {
-    clientId = ((await ClientModel.count()) + 1).toString();
-  }
-
-  const opts: FindOrCreateOptions = {
-    where: { clientId: clientId },
-  };
-
-  const [clientModel, created] = await ClientModel.findOrCreate(opts);
-  if (!created) {
-    return clientModel;
-  }
-
-  const client = await new Promise<Client>((resolve, reject) => {
-    const client = new Client({
-      authStrategy: new LocalAuth({
-        dataPath: "./data/",
-        clientId: clientId.toString(),
-      }),
-      puppeteer: {
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-        ],
-      },
-    });
-
-    client.on("remote_session_saved", () => {
-      console.log("saved");
-      clientModel.set({
-        ready: true,
-      });
-      clientModel.save();
-    });
-
-    client.on("qr", (qr) => {
-      console.log("qr");
-      clientModel.set({
-        qrCode: qr,
-      });
-      clientModel.save();
-      resolve(client);
-    });
-
-    client.on("disconnected", async () => {
-      const wh = (await clientModel.get("webHook")) as string | null;
-      if (!wh) return;
-      try {
-        await fetch(wh, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "disconected",
-          }),
-        });
-      } catch (ex) {}
-    });
-
-    client.on("ready", async () => {
-      console.log("ready");
-      clientModel.set({
-        ready: true,
-        name: client.info.pushname,
-      });
-      clientModel.save();
-
-      // ready webhook
-      const wh = (await clientModel.get("webHook")) as string | null;
-      if (!wh) return;
-      try {
-        await fetch(wh, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "disconected",
-            client: JsonClient(clientModel),
-          }),
-        });
-      } catch (ex) {}
-      clientModel.save();
-      resolve(client);
-    });
-
-    client.on("message", async (msg) => {
-      const a = await on_message(clientModel, msg);
-      if (!a) {
-        console.error("message_handler failed");
-      }
-    });
-
-    client.initialize();
-    clients[clientId] = client;
-  });
-
-  if (!clientModel.get("ready") && !can_create) {
-    client.destroy();
-  }
-  return clientModel;
+export async function deleteClient(clientId: any) {
+  const client = clients[clientId ?? ""];
+  if (!client) return;
+  client.logout();
+  client.destroy();
+  ClientModel.destroy({ where: { clientId: clientId } });
 }

@@ -4,7 +4,6 @@ import { JsonChat, JsonClient, JsonMsg } from "./resources";
 export async function on_message(client: any, msg: Message) {
   if (!client.get("webHook")) {
     console.log(`${msg.from}: ${msg.body}`);
-    console.log(msg);
     return true;
   }
 

@@ -1,9 +1,9 @@
 import express, { Request, Response } from "express";
-import Client from "../models/client";
-import { findClient, getChat, getChats, sendMessage } from "../whatsapp_api";
+import { getChat, getChats, sendMessage } from "../whatsapp_api";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { findClient } from "../whatsapp_api/findClient";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 const upload = multer({ dest: uploadDir });

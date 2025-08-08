@@ -54,14 +54,14 @@ Detailed API documentation is available at `/docs` when the server is running. T
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Port the server will listen on |
-| `DB_PATH` | `:memory:` | Path to SQLite database file (use `:memory:` for in-memory) |
+| `DB_PATH` | `./data/db.sqlite` | Path to SQLite database file (use `:memory:` for in-memory) |
 | `LOG_LEVEL` | `info` | Logging level (error, warn, info, debug) |
 
 ### Volumes
 
 | Path | Description |
 |------|-------------|
-| `/app/data` | Directory where WhatsApp sessions are stored |
+| `/app/data` | Directory where WhatsApp sessions and the database are stored |
 
 ## 🔧 Development
 
@@ -93,7 +93,7 @@ Detailed API documentation is available at `/docs` when the server is running. T
    yarn dev
    ```
 
-4. The API will be available at `http://localhost:3000`
+4. The API docs will be available at `http://localhost:3000/docs` 
 
 ### Building for Production
 

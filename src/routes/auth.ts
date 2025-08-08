@@ -1,9 +1,7 @@
 import express, { Request, Response } from "express";
-import Client from "../models/client";
-import QRCode from "qrcode";
-import { findClient } from "../whatsapp_api";
-import { JsonChat, JsonClient, JsonMsg } from "../whatsapp_api/resources";
-import { Message } from "whatsapp-web.js";
+import { deleteClient } from "../whatsapp_api";
+import { JsonClient } from "../whatsapp_api/resources";
+import { findClient } from "../whatsapp_api/findClient";
 
 const router = express.Router();
 
@@ -19,12 +17,12 @@ const router = express.Router();
  *         name: clientId
  *         schema:
  *           type: string
- *         description: Optional client ID. If not provided, a new one will be generated
+ *         description: Client ID. You can create any string you want, but always use the same for the same session.
  *       - in: query
  *         name: webHook
  *         schema:
  *           type: string
- *         description: Webhook URL to receive message events (optional)
+ *         description: Webhook URL to receive events (optional)
  *     responses:
  *       200:
  *         description: Returns an HTML page with QR code image or status message
@@ -35,8 +33,13 @@ const router = express.Router();
  *               description: HTML content with QR code or status message
  */
 router.get("/qrCode", async (req: Request, res: Response) => {
-  let id = (req.query.clientId as string) || null;
-  const wh = (req.query.webHook as string) || null;
+  let id = req.query.clientId as string;
+  const wh = req.query.webHook || req.query.webhook || null;
+
+  if (!id) {
+    res.status(422).send("You need to provide some clientId");
+    return;
+  }
 
   const client = await findClient(id, true);
   id = client.get("clientId") as string;
@@ -63,8 +66,7 @@ router.get("/qrCode", async (req: Request, res: Response) => {
   }
 
   const qrCode = client.get("qrCode") as string;
-  const qrCodeImage = await QRCode.toDataURL(qrCode);
-  res.send(`<img src="${qrCodeImage}" alt="QR Code"/>`);
+  res.send(`<img src="${qrCode}" alt="QR Code"/>`);
 });
 
 /**
@@ -81,6 +83,11 @@ router.get("/qrCode", async (req: Request, res: Response) => {
  *         schema:
  *           type: string
  *         description: The client ID to get information for
+ *       - in: query
+ *         name: webHook
+ *         schema:
+ *           type: string
+ *         description: Update the webhook url for this client (optional)
  *     responses:
  *       200:
  *         description: Client information retrieved successfully
@@ -93,11 +100,22 @@ router.get("/qrCode", async (req: Request, res: Response) => {
  */
 router.get("/", async (req: Request, res: Response) => {
   const id = req.query.clientId;
-  const client = await Client.findByPk(id);
+  const wh = req.query.webHook || req.query.webhook || null;
 
-  if (!client) return res.status(404).send("Client not found");
+  const client = await findClient(id, true);
+
+  if (wh) {
+    client.set("webHook", wh);
+    client.save();
+  }
 
   res.json(JsonClient(client));
+});
+
+router.delete("/", async (req: Request, res: Response) => {
+  const id = req.query.clientId;
+  await deleteClient(id);
+  res.status(200).send("Client deleted");
 });
 
 export default router;

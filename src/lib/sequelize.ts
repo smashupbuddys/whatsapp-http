@@ -1,7 +1,7 @@
-import { Sequelize } from '@sequelize/core';
-import { SqliteDialect } from '@sequelize/sqlite3';
+import { Sequelize } from "@sequelize/core";
+import { SqliteDialect } from "@sequelize/sqlite3";
 
-const storagePath = process.env.DB_PATH || ':memory:';
+const storagePath = process.env.DB_PATH || "./data/db.sqlite" || ":memory:";
 
 const sequelize = new Sequelize({
   dialect: SqliteDialect,
@@ -10,4 +10,3 @@ const sequelize = new Sequelize({
 });
 
 export default sequelize;
-
