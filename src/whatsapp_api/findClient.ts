@@ -62,11 +62,24 @@ export async function findClient(clientId: any, can_create: boolean = false) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              messaging_product: "whatsapp_web_disconected",
-              metadata: {
-                display_phone_number: clientModel.get("name"),
-                phone_number_id: clientModel.get("clientId"),
-              },
+              object: "whatsapp_web_account",
+              entry: [
+                {
+                  id: clientModel.get("clientId"),
+                  changes: [
+                    {
+                      value: {
+                        messaging_product: "whatsapp",
+                        metadata: {
+                          display_phone_number: clientModel.get("name"),
+                          phone_number_id: clientModel.get("clientId"),
+                        },
+                      },
+                      field: "whatsapp_web_disconected",
+                    },
+                  ],
+                },
+              ],
             }),
           });
         } catch (ex) {}
