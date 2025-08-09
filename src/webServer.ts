@@ -2,6 +2,7 @@ import express from "express";
 import router from "./routes";
 import swaggerjsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
+import log from "./lib/logger";
 
 export const port: number = parseInt(process.env.PORT ?? "3000");
 const server = express();
@@ -31,7 +32,7 @@ export async function createWebServer() {
 
   server.listen(port, () => {
     // Ready
-    console.log(`!!WebServer Started!!`);
+    log.info(`!!WebServer Started!!`);
   });
   return server;
 }

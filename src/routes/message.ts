@@ -4,6 +4,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { findClient } from "../whatsapp_api/findClient";
+import log from "../lib/logger";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 const upload = multer({ dest: uploadDir });
@@ -220,7 +221,7 @@ router.post(
             try {
               await fs.promises.unlink(finalMediaPath);
             } catch (unlinkErr) {
-              console.error(
+              log.error(
                 `Failed to delete media file: ${finalMediaPath}`,
                 unlinkErr
               );

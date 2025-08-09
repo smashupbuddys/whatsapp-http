@@ -4,7 +4,8 @@ import ClientModel from "../models/client";
 import { clients, deleteClient } from ".";
 import QRCode from "qrcode";
 import { JsonClient } from "./resources";
-import { on_message } from "./webhook";
+import { webhookHandler } from "./webhook";
+import log from "../lib/logger";
 
 export async function findClient(clientId: any, can_create: boolean = false) {
   const opts: FindOrCreateOptions = {
@@ -48,6 +49,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
     });
 
     const disconectEvent = async () => {
+      log.warn("Client disconected: " + clientModel.get("name"));
       const wh = clientModel.get("webHook") as string | null;
       clientModel.set({
         ready: false,
@@ -76,6 +78,8 @@ export async function findClient(clientId: any, can_create: boolean = false) {
       });
       clientModel.save();
 
+      log.info("Client initialized: " + client.info.pushname);
+
       // ready webhook
       const wh = clientModel.get("webHook") as string | null;
       if (!wh) return;
@@ -98,10 +102,12 @@ export async function findClient(clientId: any, can_create: boolean = false) {
         case MessageAck.ACK_ERROR:
         case MessageAck.ACK_PENDING:
         case MessageAck.ACK_SERVER:
+          break;
         case MessageAck.ACK_DEVICE:
         case MessageAck.ACK_READ:
         case MessageAck.ACK_PLAYED:
-          // TODO: message ack
+          log.http("Message ack: " + message.id);
+          const a = await webhookHandler(clientModel, [], [message]);
           break;
       }
     });
@@ -112,9 +118,10 @@ export async function findClient(clientId: any, can_create: boolean = false) {
     client.on("message_reaction", async () => {});
 
     client.on("message", async (msg) => {
-      const a = await on_message(clientModel, msg);
+      log.http("Message recived: " + clientModel.get("name"));
+      const a = await webhookHandler(clientModel, [msg], []);
       if (!a) {
-        console.error("message_handler failed");
+        log.warn("message_handler failed");
       }
     });
 

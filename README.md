@@ -62,6 +62,7 @@ Detailed API documentation is available at `/docs` when the server is running. T
 | Path | Description |
 |------|-------------|
 | `/app/data` | Directory where WhatsApp sessions and the database are stored |
+| `/app/logs` | Directory where logs are stored |
 
 ## 🔧 Development
 

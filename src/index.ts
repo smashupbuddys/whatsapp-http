@@ -2,6 +2,7 @@ import migration from "./models/migration";
 import sequelize from "./lib/sequelize";
 import { createWebServer } from "./webServer";
 import { loadClients } from "./whatsapp_api/load";
+import log from "./lib/logger";
 
 sequelize
   // Test if database can auth
@@ -13,6 +14,6 @@ sequelize
   // Load web clients in database
   .then(loadClients)
   .catch((error) => {
-    console.error("Unable to start:", error);
+    log.error("Unable to start:", error);
     process.exit(1);
   });
