@@ -11,7 +11,25 @@ export async function createWebServer() {
   server.use(express.json());
 
   // get chats
-  server.use("/api", router);
+  server.use(
+    "/api",
+    (req, res, next) => {
+      const start = Date.now();
+
+      res.on("finish", () => {
+        const duration = Date.now() - start;
+        log.http(`${req.method} ${req.originalUrl} (${duration}ms)`, {
+          ip: req.ip,
+          body: req.body ?? undefined,
+          query: req.query ?? undefined,
+          params: req.params ?? undefined,
+        });
+      });
+
+      next();
+    },
+    router
+  );
   server.use(
     "/docs",
     swaggerUi.serve,
