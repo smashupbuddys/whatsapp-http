@@ -25,6 +25,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
       }),
       puppeteer: {
         headless: true,
+        executablePath: "/usr/bin/google-chrome-stable",
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
@@ -61,7 +62,11 @@ export async function findClient(clientId: any, can_create: boolean = false) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              status: "disconected",
+              messaging_product: "whatsapp_web_disconected",
+              metadata: {
+                display_phone_number: clientModel.get("name"),
+                phone_number_id: clientModel.get("clientId"),
+              },
             }),
           });
         } catch (ex) {}
@@ -77,23 +82,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
         name: client.info.pushname,
       });
       clientModel.save();
-
       log.info("Client initialized: " + client.info.pushname);
-
-      // ready webhook
-      const wh = clientModel.get("webHook") as string | null;
-      if (!wh) return;
-      try {
-        await fetch(wh, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "disconected",
-            client: JsonClient(clientModel),
-          }),
-        });
-      } catch (ex) {}
-      clientModel.save();
       resolve(client);
     });
 

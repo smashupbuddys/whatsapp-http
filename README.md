@@ -55,7 +55,7 @@ Detailed API documentation is available at `/docs` when the server is running. T
 |----------|---------|-------------|
 | `PORT` | `3000` | Port the server will listen on |
 | `DB_PATH` | `./data/db.sqlite` | Path to SQLite database file (use `:memory:` for in-memory) |
-| `LOG_LEVEL` | `info` | Logging level (error, warn, info, debug) |
+| `LOG_LEVEL` | `http` | Logging level (error, warn, info, http, debug) |
 
 ### Volumes
 

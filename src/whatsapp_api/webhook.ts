@@ -60,7 +60,7 @@ export async function webhookHandler(
         },
       ],
     };
-    log.debug(JSON.stringify(payload.entry[0].changes[0]));
+    log.http("Payload webhook: ", JSON.stringify(payload.entry[0].changes[0]));
     if (webhookUrl) {
       await fetch(webhookUrl, {
         method: "POST",
