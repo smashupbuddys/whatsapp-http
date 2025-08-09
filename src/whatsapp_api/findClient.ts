@@ -25,6 +25,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
       }),
       puppeteer: {
         headless: true,
+        executablePath: "/usr/bin/google-chrome-stable",
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
