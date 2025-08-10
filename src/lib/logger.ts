@@ -51,20 +51,20 @@ const logger = winston.createLogger({
     }),
     // Error file transport
     new winston.transports.File({
-      filename: path.join("logs", "error.log"),
+      filename: path.join("data/logs", "error.log"),
       level: "error",
     }),
   ],
   exceptionHandlers: [
     new winston.transports.File({
-      filename: path.join("logs", "exceptions.log"),
+      filename: path.join("data/logs", "exceptions.log"),
     }),
   ],
 });
 
 // Create logs directory if it doesn't exist
 import fs from "fs";
-const logDir = "logs";
+const logDir = "data/logs";
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir);
 }
