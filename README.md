@@ -49,6 +49,91 @@ Detailed API documentation is available at `/docs` when the server is running. T
 - Example requests
 - Authentication requirements
 
+### Webhook Payload Format
+
+When a webhook URL is configured, the server will send HTTP POST requests with the following JSON structure for each event:
+
+#### Message Received
+```json
+{
+  "object": "whatsapp_web_account",
+  "entry": [
+    {
+      "id": $clientId,
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": $whatsappWebName,
+              "phone_number_id": $clientId
+            },
+            "messages": [
+              {
+                "from": $senderPhoneNumber,
+                "id": $messageId,
+                "timestamp": $timestamp,
+                "type": "text",
+                "text": $message_content
+              },
+              ...
+            ]
+            "statuses": [
+              {
+                "id": $messageId,
+                "status": "sent|delivered|read|error",
+                "timestamp": $timestamp,
+                "recipient_id": $recipientPhoneNumber
+              },
+              ...
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    },
+    ...
+  ]
+}
+```
+
+#### Whatsapp Web Disconnected
+
+```json
+{
+  "object": "whatsapp_web_account",
+  "entry": [
+    {
+      "id": $clientId,
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": $whatsappWebName,
+              "phone_number_id": $clientId
+            },
+          },
+          "field": "whatsapp_web_disconected"
+        }
+      ]
+    },
+    ...
+  ]
+}
+```
+
+If you are familiar with the Meta API, you will notice that the payload is very similar, but with some differences like the `object` field contains the value `whatsapp_web_account` instead of `whatsapp_business_account` and the disconected event has not an equivalent in the Meta API.
+
+We will try to maintain compatibility with the Meta API in the future updates so you don't have to worry about.
+
+#### Status Values
+- `sent`: Message was sent by the server.
+- `delivered`: Message was delivered to the recipient's device.
+- `read`: Message was read by the recipient.
+- `error`: There was an error when sending the message.
+
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -68,8 +153,8 @@ Detailed API documentation is available at `/docs` when the server is running. T
 
 ### Prerequisites
 
-- Node.js 16+
-- npm or yarn
+- Node.js 22+
+- npm
 - Docker (for containerized development)
 
 ### Setup
@@ -83,18 +168,17 @@ Detailed API documentation is available at `/docs` when the server is running. T
 2. Install dependencies:
    ```bash
    npm install
-   # or
-   yarn
    ```
 
 3. Start the development server:
    ```bash
    npm run dev
-   # or
-   yarn dev
    ```
 
 4. The API docs will be available at `http://localhost:3000/docs` 
+
+> **Note:**
+> If you are using an OS other than Linux, you will need to comment or change the `executablePath` in the `puppeteer` options to the path of your Google Chrome installation. 
 
 ### Building for Production
 
@@ -108,87 +192,8 @@ docker run -d -p 3000:3000 whatshttp
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Here's how you can contribute to the project:
+We welcome contributions from the community!
 
-### Prerequisites
-- A GitHub account
-- Git installed on your system
-- Node.js and npm/yarn (for development)
-
-### Fork the Repository
-1. Visit the [GitHub repository](https://github.com/crazynds/whatshttp)
-2. Click the "Fork" button in the top-right corner
-3. Clone your forked repository to your local machine:
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/whatshttp.git
-   cd whatshttp
-   ```
-4. Add the upstream repository as a remote:
-   ```bash
-   git remote add upstream https://github.com/crazynds/whatshttp.git
-   ```
-
-### Create a Branch
-1. Make sure your fork is up to date:
-   ```bash
-   git fetch upstream
-   git checkout main
-   git merge upstream/main
-   ```
-2. Create a new branch for your feature or bugfix:
-   ```bash
-   git checkout -b feature/your-feature-name
-   # or
-   git checkout -b fix/issue-number-description
-   ```
-
-### Make Your Changes
-1. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn
-   ```
-2. Make your changes following the project's code style
-3. Add tests if applicable
-4. Run tests to make sure everything works:
-   ```bash
-   npm test
-   # or
-   yarn test
-   ```
-
-### Commit and Push
-1. Stage your changes:
-   ```bash
-   git add .
-   ```
-2. Commit with a descriptive message:
-   ```bash
-   git commit -m "feat: add new feature"
-   # or
-   git commit -m "fix: resolve issue with message sending"
-   ```
-3. Push to your forked repository:
-   ```bash
-   git push origin your-branch-name
-   ```
-
-### Create a Pull Request
-1. Go to your forked repository on GitHub
-2. Click on "Compare & pull request"
-3. Fill in the PR template with details about your changes
-4. Submit the pull request
-
-### After Submitting
-- Wait for the CI/CD pipeline to run
-- Address any feedback or requested changes
-- Once approved, your changes will be merged into the main branch
-
-### Code Review Process
-- All pull requests will be reviewed by the maintainers
-- We use "Squash and Merge" to keep the commit history clean
-- Your contribution will be credited in the project's changelog
 
 ## 📄 License
 
@@ -197,8 +202,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) - WhatsApp Web API
-- [Express](https://expressjs.com/) - Web framework for Node.js
-- [TypeScript](https://www.typescriptlang.org/) - TypeScript is JavaScript with syntax for types
 
 ## 📬 Contact
 

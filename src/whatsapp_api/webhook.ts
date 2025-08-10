@@ -18,13 +18,22 @@ function formatStatus(messageAck: Message) {
   };
 }
 
-function formatMessage(message: Message) {
+async function formatMessage(message: Message) {
+  const quote = message.hasQuotedMsg
+    ? await message.getQuotedMessage()
+    : undefined;
   return {
     from: message.from,
     id: message.id._serialized,
     timestamp: Math.floor(message.timestamp).toString(),
     type: "text",
     text: message.body,
+    context: quote
+      ? {
+          from: quote.from,
+          id: quote.id._serialized,
+        }
+      : undefined,
   };
 }
 
@@ -49,9 +58,9 @@ export async function webhookHandler(
                   display_phone_number: client.get("name"),
                   phone_number_id: client.get("clientId"),
                 },
-                messages: messages
-                  .filter((m) => m.type == "chat")
-                  .map(formatMessage),
+                messages: await Promise.all(
+                  messages.filter((m) => m.type == "chat").map(formatMessage)
+                ),
                 statuses: messageAcks?.map(formatStatus),
               },
               field: "messages",
