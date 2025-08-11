@@ -23,7 +23,7 @@ async function formatMessage(message: Message) {
     ? await message.getQuotedMessage()
     : undefined;
   return {
-    from: message.from,
+    from: message.from.split("@")[0],
     id: message.id._serialized,
     timestamp: Math.floor(message.timestamp).toString(),
     type: "text",
@@ -69,7 +69,7 @@ export async function webhookHandler(
         },
       ],
     };
-    log.http("Payload webhook: ", JSON.stringify(payload.entry[0].changes[0]));
+    log.http("Payload webhook: ", payload.entry[0].changes[0]);
     if (webhookUrl) {
       await fetch(webhookUrl, {
         method: "POST",

@@ -6,7 +6,7 @@ import fs from "fs";
 import { findClient } from "../whatsapp_api/findClient";
 import log from "../lib/logger";
 
-const uploadDir = path.join(process.cwd(), "uploads");
+const uploadDir = path.join(process.cwd(), "data/uploads");
 const upload = multer({ dest: uploadDir });
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });

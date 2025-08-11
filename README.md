@@ -146,8 +146,7 @@ We will try to maintain compatibility with the Meta API in the future updates so
 
 | Path | Description |
 |------|-------------|
-| `/app/data` | Directory where WhatsApp sessions and the database are stored |
-| `/app/logs` | Directory where logs are stored |
+| `/app/data` | Directory where the data files are stored and the database are stored |
 
 ## 🔧 Development
 

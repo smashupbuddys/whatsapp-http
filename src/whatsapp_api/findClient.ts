@@ -3,7 +3,6 @@ import { Client, LocalAuth, MessageAck } from "whatsapp-web.js";
 import ClientModel from "../models/client";
 import { clients, deleteClient } from ".";
 import QRCode from "qrcode";
-import { JsonClient } from "./resources";
 import { webhookHandler } from "./webhook";
 import log from "../lib/logger";
 
@@ -20,7 +19,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
   const client = await new Promise<Client>((resolve, reject) => {
     const client = new Client({
       authStrategy: new LocalAuth({
-        dataPath: "./data/",
+        dataPath: "./data/sessions",
         clientId: clientId.toString(),
       }),
       puppeteer: {
