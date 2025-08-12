@@ -27,7 +27,9 @@ async function formatMessage(message: Message) {
     id: message.id._serialized,
     timestamp: Math.floor(message.timestamp).toString(),
     type: "text",
-    text: message.body,
+    text: {
+      body: message.body,
+    },
     context: quote
       ? {
           from: quote.from,
@@ -69,7 +71,7 @@ export async function webhookHandler(
         },
       ],
     };
-    log.http("Payload webhook: ", payload.entry[0].changes[0]);
+    log.debug("Payload webhook: ", payload.entry[0].changes[0]);
     if (webhookUrl) {
       await fetch(webhookUrl, {
         method: "POST",

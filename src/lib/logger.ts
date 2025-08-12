@@ -55,11 +55,6 @@ const logger = winston.createLogger({
       level: "error",
     }),
   ],
-  exceptionHandlers: [
-    new winston.transports.File({
-      filename: path.join("data/logs", "exceptions.log"),
-    }),
-  ],
 });
 
 // Create logs directory if it doesn't exist
