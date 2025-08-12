@@ -15,15 +15,15 @@ export async function createWebServer() {
     "/api",
     (req, res, next) => {
       const start = Date.now();
-
+      log.http(`${req.method} ${req.originalUrl}`, {
+        ip: req.ip,
+        body: req.body ?? undefined,
+        query: req.query ?? undefined,
+        params: req.params ?? undefined,
+      });
       res.on("finish", () => {
         const duration = Date.now() - start;
-        log.http(`${req.method} ${req.originalUrl} (${duration}ms)`, {
-          ip: req.ip,
-          body: req.body ?? undefined,
-          query: req.query ?? undefined,
-          params: req.params ?? undefined,
-        });
+        log.http(`${req.method} ${req.originalUrl} (${duration}ms)`);
       });
 
       next();

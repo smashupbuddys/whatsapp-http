@@ -74,7 +74,9 @@ When a webhook URL is configured, the server will send HTTP POST requests with t
                 "id": $messageId,
                 "timestamp": $timestamp,
                 "type": "text",
-                "text": $message_content
+                "text": {
+                  "body": $message_content,
+                }
               },
               ...
             ]

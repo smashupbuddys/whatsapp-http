@@ -12,15 +12,34 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Helper to normalize Brazilian phone numbers
+function normalizeBrazilianPhoneNumber(phoneNumber: string): string {
+  // Check if it's a Brazilian number (+55) with 13 digits (including country code and 9th digit)
+  const brazilianPhoneRegex = /^55(\d{2})9(\d{8})$/;
+  const match = phoneNumber.match(brazilianPhoneRegex);
+
+  if (match) {
+    // Remove the 9th digit (the first digit after area code)
+    return `55${match[1]}${match[2]}`;
+  }
+  return phoneNumber;
+}
+
 // Helper to normalize chatId suffix based on param or query
 function normalizeChatId(chatId: string, isGroupQuery?: string | undefined) {
   if (chatId.endsWith("@c.us") || chatId.endsWith("@g.us")) {
     return chatId;
   }
+
+  // Normalize phone number before adding suffix
+  const normalizedId = chatId.includes("@")
+    ? chatId
+    : normalizeBrazilianPhoneNumber(chatId);
+
   if (isGroupQuery === "true") {
-    return chatId + "@g.us";
+    return normalizedId + "@g.us";
   }
-  return chatId + "@c.us";
+  return normalizedId + "@c.us";
 }
 
 const router = express.Router();
@@ -184,6 +203,8 @@ router.post(
       req.params.chatId,
       req.query.group as string | undefined
     );
+
+    console.log(chatId);
     const { message, response_to_id } = req.body;
 
     let finalMediaPath: string | null = null;
@@ -215,7 +236,9 @@ router.post(
         response_to_id ?? null,
         isVoice
       )
-        .catch((err) => {})
+        .catch((err) => {
+          log.error(`Failed to send message: ${err}`);
+        })
         .finally(async () => {
           if (finalMediaPath) {
             try {

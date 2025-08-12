@@ -5,6 +5,7 @@ import { Model } from "@sequelize/core";
 import fs from "fs/promises";
 import path from "path";
 import { JsonChat, JsonContact, JsonMsg } from "./resources";
+import logger from "../lib/logger";
 
 export const clients = {} as {
   [key: string]: Client;
@@ -57,6 +58,7 @@ export async function sendMessage(
   );
 
   if (mediaPath) {
+    logger.info(`Sending media: ${mediaPath}`);
     const media = MessageMedia.fromFilePath(mediaPath);
     if (message) options.caption = message;
     options.sendAudioAsVoice = isAudio;
@@ -64,6 +66,7 @@ export async function sendMessage(
   }
 
   if (message) {
+    logger.info(`Sending text: ${message}`);
     return await JsonMsg(await chat.sendMessage(message, options));
   }
 
