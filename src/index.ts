@@ -11,7 +11,6 @@ sequelize
   .then(migration)
   // Delete .wwebjs_cache and .wwebjs_auth
   .then(() => {
-    fs.rmdirSync("./.wwebjs_auth", { recursive: true });
     fs.rmdirSync("./.wwebjs_cache", { recursive: true });
   })
   // Start webServer
