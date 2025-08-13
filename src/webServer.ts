@@ -23,7 +23,7 @@ export async function createWebServer() {
       });
       res.on("finish", () => {
         const duration = Date.now() - start;
-        log.http(`${req.method} ${req.originalUrl} (${duration}ms)`);
+        log.http(`${req.method} ${req.path} (${duration}ms)`);
       });
 
       next();
