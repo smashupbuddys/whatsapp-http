@@ -11,7 +11,11 @@ sequelize
   .then(migration)
   // Delete .wwebjs_cache and .wwebjs_auth
   .then(() => {
-    fs.rmdirSync("./.wwebjs_cache", { recursive: true });
+    [".wwebjs_cache", ".wwebjs_auth"].forEach((pasta) => {
+      if (fs.existsSync(pasta)) {
+        fs.rmSync(pasta, { recursive: true, force: true });
+      }
+    });
   })
   // Start webServer
   .then(createWebServer)
