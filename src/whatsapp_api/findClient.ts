@@ -101,8 +101,13 @@ export async function findClient(clientId: any, can_create: boolean = false) {
     client.on("message_ack", async (message, ack) => {
       switch (ack) {
         case MessageAck.ACK_ERROR:
+          log.error("Error on send message: " + message.id);
+          break;
         case MessageAck.ACK_PENDING:
+          log.debug("Message not sent yet: " + message.id);
+          break;
         case MessageAck.ACK_SERVER:
+          log.http("Message Sended Sucessfuly: " + message.id);
           break;
         case MessageAck.ACK_DEVICE:
         case MessageAck.ACK_READ:
