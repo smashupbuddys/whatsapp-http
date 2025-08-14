@@ -7,6 +7,7 @@ import { webhookHandler } from "./webhook";
 import log from "../lib/logger";
 import fs from "fs";
 import path from "path";
+import logger from "../lib/logger";
 
 export async function findClient(clientId: any, can_create: boolean = false) {
   const opts: FindOrCreateOptions = {
@@ -24,10 +25,12 @@ export async function findClient(clientId: any, can_create: boolean = false) {
       "data",
       `session-${clientId.toString()}`
     );
+    logger.http(sessionDir);
     if (fs.existsSync(sessionDir)) {
       const files = fs.readdirSync(sessionDir);
       for (const file of files) {
         if (file.startsWith("Singleton")) {
+          logger.warn(sessionDir);
           const filePath = path.join(sessionDir, file);
           fs.unlinkSync(filePath);
         }
@@ -149,7 +152,11 @@ export async function findClient(clientId: any, can_create: boolean = false) {
 
     client.initialize();
     clients[clientId] = client;
+  }).catch((err) => {
+    log.error(err);
   });
+
+  if (!client) return null;
 
   if (!clientModel.get("ready") && !can_create) {
     client.destroy();
