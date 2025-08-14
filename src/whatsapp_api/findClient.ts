@@ -70,6 +70,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
     const disconectEvent = async () => {
       log.warn("Client disconected: " + clientModel.get("name"));
       const wh = clientModel.get("webHook") as string | null;
+      delete clients[clientId];
       clientModel.set({
         ready: false,
       });
