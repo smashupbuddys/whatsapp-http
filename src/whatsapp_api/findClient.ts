@@ -5,6 +5,8 @@ import { clients, deleteClient } from ".";
 import QRCode from "qrcode";
 import { webhookHandler } from "./webhook";
 import log from "../lib/logger";
+import fs from "fs";
+import path from "path";
 
 export async function findClient(clientId: any, can_create: boolean = false) {
   const opts: FindOrCreateOptions = {
@@ -17,6 +19,20 @@ export async function findClient(clientId: any, can_create: boolean = false) {
   }
 
   const client = await new Promise<Client>((resolve, reject) => {
+    const sessionDir = path.join(
+      process.cwd(),
+      "data",
+      `session-${clientId.toString()}`
+    );
+    if (fs.existsSync(sessionDir)) {
+      const files = fs.readdirSync(sessionDir);
+      for (const file of files) {
+        if (file.startsWith("Singleton")) {
+          const filePath = path.join(sessionDir, file);
+          fs.unlinkSync(filePath);
+        }
+      }
+    }
     const client = new Client({
       authStrategy: new LocalAuth({
         dataPath: "./data/sessions",
