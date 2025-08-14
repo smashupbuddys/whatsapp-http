@@ -42,6 +42,7 @@ router.get("/qrCode", async (req: Request, res: Response) => {
   }
 
   const client = await findClient(id, true);
+  if (!client) return res.status(404).send("Client not found");
   id = client.get("clientId") as string;
   if (wh) {
     client.set("webHook", wh);
@@ -103,6 +104,7 @@ router.get("/", async (req: Request, res: Response) => {
   const wh = req.query.webHook || req.query.webhook || null;
 
   const client = await findClient(id, true);
+  if (!client) return res.status(404).send("Client not found");
 
   if (wh) {
     client.set("webHook", wh);
