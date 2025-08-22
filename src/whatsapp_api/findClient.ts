@@ -23,6 +23,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
     const sessionDir = path.join(
       process.cwd(),
       "data",
+      "sessions",
       `session-${clientId.toString()}`
     );
     logger.http(sessionDir);
@@ -30,7 +31,7 @@ export async function findClient(clientId: any, can_create: boolean = false) {
       const files = fs.readdirSync(sessionDir);
       for (const file of files) {
         if (file.startsWith("Singleton")) {
-          logger.warn(sessionDir);
+          logger.debug("Deleting file: " + sessionDir);
           const filePath = path.join(sessionDir, file);
           fs.unlinkSync(filePath);
         }
