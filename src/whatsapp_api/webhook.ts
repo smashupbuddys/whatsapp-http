@@ -32,7 +32,7 @@ async function formatMessage(message: Message) {
     },
     context: quote
       ? {
-          from: quote.from,
+          from: quote.from.split("@")[0],
           id: quote.id._serialized,
         }
       : undefined,
@@ -45,6 +45,7 @@ export async function webhookHandler(
   messageAcks: Message[]
 ) {
   const webhookUrl = client.get("webHook");
+  if (messages.length == 0 && messageAcks.length == 0) return true;
 
   try {
     const payload = {
@@ -71,7 +72,7 @@ export async function webhookHandler(
         },
       ],
     };
-    log.debug("Payload webhook: ", payload.entry[0].changes[0]);
+    log.debug("Payload webhook: ", payload.entry[0]);
     if (webhookUrl) {
       await fetch(webhookUrl, {
         method: "POST",

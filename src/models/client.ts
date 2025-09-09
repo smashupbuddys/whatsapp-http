@@ -6,6 +6,7 @@ const Client = sequelize.define("client", {
     type: DataTypes.STRING,
     primaryKey: true,
   },
+  phoneId: DataTypes.STRING,
   name: DataTypes.STRING,
   qrCode: DataTypes.STRING,
   ready: DataTypes.BOOLEAN,
