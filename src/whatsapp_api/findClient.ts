@@ -1,13 +1,56 @@
 import { FindOrCreateOptions } from "@sequelize/core";
-import { Client, LocalAuth, MessageAck } from "whatsapp-web.js";
+import { MessageAck, type Message } from "whatsapp-web.js";
 import ClientModel from "../models/client";
 import { clients, deleteClient } from ".";
 import QRCode from "qrcode";
 import { webhookHandler } from "./webhook";
 import log from "../lib/logger";
-import fs from "fs";
 import path from "path";
 import logger from "../lib/logger";
+import { WhatsappService } from "../services/WhatsappService";
+import { WAMessage } from "baileys";
+
+const convertBaileysMessageToWhatsappMessage = (message: WAMessage) => {
+  if (
+    !message.message?.extendedTextMessage?.text &&
+    !message.message?.conversation
+  ) {
+    return {
+      ack: MessageAck.ACK_ERROR,
+    } as Message;
+  }
+  return {
+    ack: message.status || MessageAck.ACK_SERVER,
+    deviceType: "",
+    type: message.message.senderKeyDistributionMessage ? "group" : "chat",
+    body: message.message?.extendedTextMessage
+      ? message.message.extendedTextMessage.text
+      : message.message?.conversation,
+    timestamp: message.messageTimestamp,
+    broadcast: message.broadcast,
+    hasQuotedMsg: !!message.message?.extendedTextMessage?.contextInfo,
+    getQuotedMessage: async () => {
+      return {
+        from: message.message?.extendedTextMessage?.contextInfo?.participant,
+        id: {
+          id: message.message?.extendedTextMessage?.contextInfo?.stanzaId,
+          remote:
+            message.message?.extendedTextMessage?.contextInfo?.participant,
+          _serialized:
+            message.message?.extendedTextMessage?.contextInfo?.stanzaId,
+        },
+      };
+    },
+    from: message.key.remoteJid,
+    fromMe: message.key.fromMe,
+    id: {
+      _serialized: message.key.id,
+      fromMe: message.key.fromMe,
+      id: message.key.id,
+      remote: message.key.remoteJid,
+    },
+  } as Message;
+};
 
 export async function findClient(clientId: any, can_create: boolean = false) {
   const opts: FindOrCreateOptions = {
@@ -19,54 +62,10 @@ export async function findClient(clientId: any, can_create: boolean = false) {
     return clientModel;
   }
 
-  const client = await new Promise<Client>((resolve, reject) => {
-    const sessionDir = path.join(
-      process.cwd(),
-      "data",
-      "sessions",
-      `session-${clientId.toString()}`
-    );
+  const client = await new Promise<WhatsappService>(async (resolve, reject) => {
+    const sessionDir = path.join(process.cwd(), "data", "sessions");
+    const waService = new WhatsappService(clientId.toString());
     logger.http(sessionDir);
-    if (fs.existsSync(sessionDir)) {
-      const files = fs.readdirSync(sessionDir);
-      for (const file of files) {
-        if (file.startsWith("Singleton")) {
-          logger.debug("Deleting file: " + sessionDir);
-          const filePath = path.join(sessionDir, file);
-          fs.unlinkSync(filePath);
-        }
-      }
-    }
-    const client = new Client({
-      authStrategy: new LocalAuth({
-        dataPath: "./data/sessions",
-        clientId: clientId.toString(),
-      }),
-      puppeteer: {
-        headless: true,
-        executablePath: "/usr/bin/google-chrome-stable",
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-        ],
-      },
-    });
-
-    client.on("remote_session_saved", () => {
-      clientModel.set({
-        ready: true,
-      });
-      clientModel.save();
-    });
-
-    client.on("qr", async (qr) => {
-      clientModel.set({
-        qrCode: await QRCode.toDataURL(qr),
-      });
-      clientModel.save();
-      resolve(client);
-    });
 
     const disconectEvent = async () => {
       log.warn("Client disconected: " + clientModel.get("name"));
@@ -106,62 +105,139 @@ export async function findClient(clientId: any, can_create: boolean = false) {
       }
       deleteClient(clientModel.get("clientId"));
     };
-    client.on("auth_failure", disconectEvent);
-    client.on("disconnected", disconectEvent);
 
-    client.on("ready", async () => {
+    waService.onClose(disconectEvent);
+    waService.onQrCode(async (qrCode: string) => {
+      clientModel.set({
+        qrCode: await QRCode.toDataURL(qrCode),
+        ready: false,
+      });
+      await clientModel.save();
+      resolve(waService);
+    });
+    waService.onOpen(async () => {
       clientModel.set({
         ready: true,
-        name: client.info.pushname,
       });
-      clientModel.save();
-      log.info("Client initialized: " + client.info.pushname);
-      resolve(client);
+      await clientModel.save();
+      log.info("Client initialized: " + clientId.toString());
+      resolve(waService);
     });
-
-    client.on("message_ack", async (message, ack) => {
-      switch (ack) {
-        case MessageAck.ACK_ERROR:
-          log.error("Error on send message: " + message.id);
-          break;
-        case MessageAck.ACK_PENDING:
-          log.debug("Message not sent yet: " + message.id);
-          break;
-        case MessageAck.ACK_SERVER:
-          log.http("Message Sended Sucessfuly: " + message.id);
-          break;
-        case MessageAck.ACK_DEVICE:
-        case MessageAck.ACK_READ:
-        case MessageAck.ACK_PLAYED:
-          log.http("Message ack: " + message.id);
-          const a = await webhookHandler(clientModel, [], [message]);
-          break;
-      }
+    waService.onCredentials(async (creds) => {
+      clientModel.set({
+        name: creds.me?.name,
+        phoneId: creds.me?.id,
+        ready: true,
+      });
+      await clientModel.save();
     });
-
-    // TODO: message edit, delete, reaction
-    client.on("message_edit", async () => {});
-    client.on("message_delete", async () => {});
-    client.on("message_reaction", async () => {});
-
-    client.on("message", async (msg) => {
-      log.http("Message recived: " + clientModel.get("name"));
-      const a = await webhookHandler(clientModel, [msg], []);
-      if (!a) {
-        log.warn("message_handler failed");
-      }
+    waService.onUpdate(async (messages) => {
+      const a = await webhookHandler(
+        clientModel,
+        [],
+        messages
+          .filter((message) => !!message.update.status)
+          .map(
+            (message) =>
+              ({
+                ack: message.update.status ?? MessageAck.ACK_ERROR,
+                id: {
+                  id: message.key.id,
+                  fromMe: message.key.fromMe,
+                  remote: message.key.remoteJid,
+                  _serialized: message.key.id,
+                },
+                from: message.key.remoteJid,
+              } as Message)
+          )
+      );
+      // messages.forEach(async (message) => {
+      //   switch (message.update.keepInChat) {
+      //   case MessageAck.ACK_ERROR:
+      //     log.error("Error on send message: " + message.id);
+      //     break;
+      //   case MessageAck.ACK_PENDING:
+      //     log.debug("Message not sent yet: " + message.id);
+      //     break;
+      //   case MessageAck.ACK_SERVER:
+      //     log.http("Message Sended Sucessfuly: " + message.id);
+      //     break;
+      //   case MessageAck.ACK_DEVICE:
+      //   case MessageAck.ACK_READ:
+      //   case MessageAck.ACK_PLAYED:
+      //     log.http("Message ack: " + message.id);
+      //     const a = await webhookHandler(clientModel, [], [message]);
+      //     break;
+      // }
+      // })
     });
+    waService.onMessage(async ({ messages }) => {
+      const a = await webhookHandler(
+        clientModel,
+        messages
+          .map(convertBaileysMessageToWhatsappMessage)
+          .filter(
+            (message) =>
+              message.ack !== MessageAck.ACK_ERROR &&
+              !message.fromMe &&
+              message.from
+          ),
+        []
+      );
+    });
+    waService.connect(sessionDir);
 
-    client.initialize();
-    clients[clientId] = client;
+    // client.on("message_ack", async (message, ack) => {
+    //   switch (ack) {
+    //     case MessageAck.ACK_ERROR:
+    //       log.error("Error on send message: " + message.id);
+    //       break;
+    //     case MessageAck.ACK_PENDING:
+    //       log.debug("Message not sent yet: " + message.id);
+    //       break;
+    //     case MessageAck.ACK_SERVER:
+    //       log.http("Message Sended Sucessfuly: " + message.id);
+    //       break;
+    //     case MessageAck.ACK_DEVICE:
+    //     case MessageAck.ACK_READ:
+    //     case MessageAck.ACK_PLAYED:
+    //       log.http("Message ack: " + message.id);
+    //       const a = await webhookHandler(clientModel, [], [message]);
+    //       break;
+    //   }
+    // });
+
+    // // TODO: message edit, delete, reaction
+    // client.on("message_edit", async () => {});
+    // client.on("message_delete", async () => {});
+    // client.on("message_reaction", async () => {});
+
+    // client.on("message", async (msg) => {
+    //   log.http("Message recived: " + clientModel.get("name"));
+    //   const a = await webhookHandler(clientModel, [msg], []);
+    //   if (!a) {
+    //     log.warn("message_handler failed");
+    //   }
+    // });
+
+    clients[clientId] = waService;
+    return waService;
   }).catch((err) => {
     log.error(err);
   });
 
-  if (!client) return null;
+  if (!client) {
+    await clientModel.destroy();
+    delete clients[clientId];
+    return null;
+  }
 
   if (!clientModel.get("ready") && !can_create) {
+    client.logout();
     client.destroy();
+    clientModel.destroy();
+    delete clients[clientId];
+    return null;
   }
   return clientModel;
 }

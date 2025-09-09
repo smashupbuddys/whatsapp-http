@@ -27,118 +27,111 @@ function normalizeBrazilianPhoneNumber(phoneNumber: string): string {
 
 // Helper to normalize chatId suffix based on param or query
 function normalizeChatId(chatId: string, isGroupQuery?: string | undefined) {
-  if (chatId.endsWith("@c.us") || chatId.endsWith("@g.us")) {
-    return chatId;
-  }
-
   // Normalize phone number before adding suffix
   const normalizedId = chatId.includes("@")
     ? chatId
     : normalizeBrazilianPhoneNumber(chatId);
 
-  if (isGroupQuery === "true") {
-    return normalizedId + "@g.us";
-  }
-  return normalizedId + "@c.us";
+  return normalizedId;
 }
 
 const router = express.Router();
 
-/**
- * @swagger
- * /api/message/chat:
- *   get:
- *     tags: [Messages]
- *     summary: Get all chats for a client
- *     parameters:
- *       - in: query
- *         name: clientId
- *         required: true
- *         schema:
- *           type: string
- *         description: The client ID
- *     responses:
- *       200:
- *         description: List of chats retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Chat'
- *       400:
- *         description: Client not ready
- *       404:
- *         description: Client not found
- */
-router.get("/chat", async (req: Request, res: Response) => {
-  const id = req.query.clientId;
-  const client = await findClient(id);
+// /**
+//  * @swagger
+//  * /api/message/chat:
+//  *   get:
+//  *     tags: [Messages]
+//  *     summary: Get all chats for a client
+//  *     parameters:
+//  *       - in: query
+//  *         name: clientId
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: The client ID
+//  *     responses:
+//  *       200:
+//  *         description: List of chats retrieved successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: array
+//  *               items:
+//  *                 $ref: '#/components/schemas/Chat'
+//  *       400:
+//  *         description: Client not ready
+//  *       404:
+//  *         description: Client not found
+//  */
+// router.get("/chat", async (req: Request, res: Response) => {
+//   const id = req.query.clientId;
+//   const client = await findClient(id);
 
-  if (!client) return res.status(404).send("Client not found");
-  if (!client.get("ready")) return res.status(400).send("Client not ready");
+//   if (!client) return res.status(404).send("Client not found");
+//   if (!client.get("ready")) return res.status(400).send("Client not ready");
 
-  try {
-    const chats = await getChats(client);
-    res.json(chats);
-  } catch (err) {
-    res.status(500).json({ error: `error getting chats: ${err}` });
-  }
-});
+//   try {
+//     const chats = await getChats(client);
+//     res.json(chats);
+//   } catch (err) {
+//     res.status(500).json({ error: `error getting chats: ${err}` });
+//   }
+// });
 
-/**
- * @swagger
- * /api/message/chat/{chatId}:
- *   get:
- *     tags: [Messages]
- *     summary: Get a specific chat
- *     parameters:
- *       - in: query
- *         name: clientId
- *         required: true
- *         schema:
- *           type: string
- *         description: The client ID
- *       - in: path
- *         name: chatId
- *         required: true
- *         schema:
- *           type: string
- *         description: The chat ID (without @c.us or @g.us suffix)
- *       - in: query
- *         name: group
- *         schema:
- *           type: string
- *         description: Set to 'true' if this is a group chat
- *     responses:
- *       200:
- *         description: Chat details retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Chat'
- *       400:
- *         description: Client not ready
- *       404:
- *         description: Client or chat not found
- */
-router.get("/chat/:chatId", async (req: Request, res: Response) => {
-  const client = await findClient(req.query.clientId);
-  if (!client) return res.status(404).send("Client not found");
-  if (!client.get("ready")) return res.status(400).send("Client not ready");
+// /**
+//  * @swagger
+//  * /api/message/chat/{chatId}:
+//  *   get:
+//  *     tags: [Messages]
+//  *     summary: Get a specific chat
+//  *     parameters:
+//  *       - in: query
+//  *         name: clientId
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: The client ID
+//  *       - in: path
+//  *         name: chatId
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: The chat ID (without @c.us or @g.us suffix)
+//  *       - in: query
+//  *         name: group
+//  *         schema:
+//  *           type: string
+//  *         description: Set to 'true' if this is a group chat
+//  *     responses:
+//  *       200:
+//  *         description: Chat details retrieved successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Chat'
+//  *       400:
+//  *         description: Client not ready
+//  *       404:
+//  *         description: Client or chat not found
+//  */
+// router.get("/chat/:chatId", async (req: Request, res: Response) => {
+//   const client = await findClient(req.query.clientId);
+//   if (!client) return res.status(404).send("Client not found");
+//   if (!client.get("ready")) return res.status(400).send("Client not ready");
 
-  const chatId = normalizeChatId(
-    req.params.chatId,
-    req.query.group as string | undefined
-  );
+//   const chatId = normalizeChatId(
+//     req.params.chatId,
+//     req.query.group as string | undefined
+//   );
 
-  try {
-    const chat = await getChat(client, chatId);
-    res.json(chat);
-  } catch (err) {
-    res.status(500).json({ error: `error getting chat: ${err}` });
-  }
-});
+//   try {
+//     const chat = await getChat(client, chatId);
+//     res.json(chat);
+//   } catch (err) {
+//     res.status(500).json({ error: `error getting chat: ${err}` });
+//   }
+// });
 
 /**
  * @swagger
@@ -182,10 +175,6 @@ router.get("/chat/:chatId", async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: Message sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Message'
  *       400:
  *         description: Client not ready or invalid request
  *       404:
@@ -204,7 +193,6 @@ router.post(
       req.query.group as string | undefined
     );
 
-    console.log(chatId);
     const { message, response_to_id } = req.body;
 
     let finalMediaPath: string | null = null;
