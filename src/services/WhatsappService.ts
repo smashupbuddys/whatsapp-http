@@ -11,6 +11,8 @@ import makeWASocket, {
 } from "baileys";
 import { Boom } from "@hapi/boom";
 import * as path from "path";
+import logger from "../lib/logger";
+import { ILogger } from "baileys/lib/Utils/logger";
 
 export class WhatsappService {
   private sock: WASocket | null = null;
@@ -31,12 +33,38 @@ export class WhatsappService {
 
     const { version } = await fetchLatestBaileysVersion();
 
+    const customLogger = {
+      level: logger.level,
+      child(obj: Record<string, any>) {
+        return customLogger;
+      },
+      trace(obj: any, msg?: string) {
+        return null;
+      },
+      debug(obj: any, msg?: string) {
+        if (!msg) return;
+        logger.debug(msg, obj);
+      },
+      info(obj: any, msg?: string) {
+        if (!msg) return;
+        logger.info(msg, obj);
+      },
+      warn(obj: any, msg?: string) {
+        if (!msg) return;
+        logger.warn(msg, obj);
+      },
+      error(obj: any, msg?: string) {
+        if (!msg) return;
+        logger.error(msg, obj);
+      },
+    } as ILogger;
     this.sock = makeWASocket({
       version,
       auth: state,
       printQRInTerminal: false, // Mostra QR no terminal
       syncFullHistory: false,
       markOnlineOnConnect: false,
+      logger: customLogger,
     });
 
     this.sock.ev.on("creds.update", saveCreds);
