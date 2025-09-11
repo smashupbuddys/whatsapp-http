@@ -1,4 +1,4 @@
-import { Chat, Message, MessageAck } from "whatsapp-web.js";
+import { Chat, Message, MessageAck, MessageTypes } from "whatsapp-web.js";
 import log from "../lib/logger";
 
 function formatStatus(messageAck: Message) {
@@ -22,14 +22,28 @@ async function formatMessage(message: Message) {
   const quote = message.hasQuotedMsg
     ? await message.getQuotedMessage()
     : undefined;
+
+  const types = {} as { [key: string]: string };
+  types[MessageTypes.TEXT] = "text";
+  types[MessageTypes.AUDIO] = "audio64";
+  types[MessageTypes.GROUP_NOTIFICATION] = "text";
+
   return {
     from: message.from.split("@")[0],
     id: message.id._serialized,
     timestamp: Math.floor(message.timestamp).toString(),
-    type: "text",
-    text: {
-      body: message.body,
-    },
+    type: types[message.type],
+    text:
+      message.type == MessageTypes.TEXT ||
+      message.type == MessageTypes.GROUP_NOTIFICATION
+        ? {
+            body: message.body,
+          }
+        : message.type == MessageTypes.AUDIO
+        ? {
+            audio: await message.downloadMedia(),
+          }
+        : {},
     context: quote
       ? {
           from: quote.from.split("@")[0],
@@ -46,7 +60,7 @@ export async function webhookHandler(
 ) {
   const webhookUrl = client.get("webHook");
   if (messages.length == 0 && messageAcks.length == 0) return true;
-
+  console.log(messages);
   try {
     const payload = {
       object: "whatsapp_web_account",
@@ -62,7 +76,9 @@ export async function webhookHandler(
                   phone_number_id: client.get("clientId"),
                 },
                 messages: await Promise.all(
-                  messages.filter((m) => m.type == "chat").map(formatMessage)
+                  messages
+                    .filter((m) => m.type != MessageTypes.GROUP_NOTIFICATION)
+                    .map(formatMessage)
                 ),
                 statuses: messageAcks?.map(formatStatus),
               },

@@ -1,5 +1,10 @@
 import { FindOrCreateOptions } from "@sequelize/core";
-import { MessageAck, type Message } from "whatsapp-web.js";
+import {
+  MessageAck,
+  MessageMedia,
+  MessageTypes,
+  type Message,
+} from "whatsapp-web.js";
 import ClientModel from "../models/client";
 import { clients, deleteClient } from ".";
 import QRCode from "qrcode";
@@ -9,11 +14,13 @@ import path from "path";
 import logger from "../lib/logger";
 import { WhatsappService } from "../services/WhatsappService";
 import { WAMessage } from "baileys";
+import { downloadMediaMessage } from "baileys";
 
 const convertBaileysMessageToWhatsappMessage = (message: WAMessage) => {
   if (
     !message.message?.extendedTextMessage?.text &&
-    !message.message?.conversation
+    !message.message?.conversation &&
+    !message.message?.audioMessage
   ) {
     return {
       ack: MessageAck.ACK_ERROR,
@@ -22,12 +29,33 @@ const convertBaileysMessageToWhatsappMessage = (message: WAMessage) => {
   return {
     ack: message.status || MessageAck.ACK_SERVER,
     deviceType: "",
-    type: message.message.senderKeyDistributionMessage ? "group" : "chat",
     body: message.message?.extendedTextMessage
       ? message.message.extendedTextMessage.text
-      : message.message?.conversation,
+      : message.message?.conversation || "",
     timestamp: message.messageTimestamp,
     broadcast: message.broadcast,
+    hasMedia: !!message.message?.imageMessage,
+    type: message.message?.audioMessage
+      ? MessageTypes.AUDIO
+      : message.message.senderKeyDistributionMessage
+      ? MessageTypes.GROUP_NOTIFICATION
+      : MessageTypes.TEXT,
+    downloadMedia: async () => {
+      if (!message.message?.audioMessage) return {};
+      const buffer = await downloadMediaMessage(message, "buffer", {});
+      const base64Audio = buffer.toString("base64");
+      const mimetype = message.message.audioMessage.mimetype || "audio/ogg";
+      var fileSize = message.message.audioMessage.fileLength || buffer.length;
+      if (typeof fileSize == "object") {
+        fileSize = fileSize.toNumber();
+      }
+      return {
+        data: base64Audio,
+        mimetype,
+        filesize: fileSize,
+        filename: null,
+      } as MessageMedia;
+    },
     hasQuotedMsg: !!message.message?.extendedTextMessage?.contextInfo,
     getQuotedMessage: async () => {
       return {
@@ -176,12 +204,15 @@ export async function findClient(clientId: any, can_create: boolean = false) {
         clientModel,
         messages
           .map(convertBaileysMessageToWhatsappMessage)
-          .filter(
-            (message) =>
+          .filter((message) => {
+            console.log(message);
+            return (
               message.ack !== MessageAck.ACK_ERROR &&
-              !message.fromMe &&
-              message.from
-          ),
+              //!message.fromMe &&
+              message.from &&
+              message.type != MessageTypes.GROUP_NOTIFICATION
+            );
+          }),
         []
       );
     });
