@@ -5,11 +5,11 @@ services:
     image: crazynds/whatshttp:latest
     container_name: whatsapp-http
     ports:
-      - "3000:3000"
+      - "3030:3030"
     volumes:
       - whatsapp-data:/app/data
     environment:
-      - PORT=3000
+      - PORT=3030
       # Uncomment and set if you want to customize DB path or log level
       # - DB_PATH=./data/db.sqlite
       # - LOG_LEVEL=info
